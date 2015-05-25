@@ -1,0 +1,87 @@
+1.importing packages of "dplyr" is necessary for this project. 
+	install.packages('dplyr')
+	library(dplyr)
+
+2.We can dowload "Human Activity Recognition Using Smartphones Data Set" from "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+
+	Url<-"http://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip "
+	if(!file.exists("./HAdata")){dir.create("./HAdata")}
+	download.file(Url,destfile="./HAdata/datasetZip.zip",mode='wb')
+
+	#unzip the unziped files
+	pathList<-unzip("./HAdata/datasetZip.zip")  
+	#list the files and the corresponding paths
+	the pathList looks like:
+	> head(pathList,2)
+  [1] "./UCI HAR Dataset/activity_labels.txt"
+  [2] "./UCI HAR Dataset/features.txt"  
+
+3.Read the neeed files for (subject, X, AND y)
+	SubjectTest<-read.table(pathList[14])
+	X_test<-read.table(pathList[15])
+	y_test<-read.table(pathList[16])
+	#training data 
+	SubjectTrain<-read.table(pathList[26])
+	X_train<-read.table(pathList[27])
+	y_train<-read.table(pathList[28])
+
+4.Merges the training and the test sets to create on data set (you can also apply 'dplyr' functions to rename)
+	Code is described as #Step 1
+	the results are:
+	subject        V1          V2          V3         V4         V5         V6 ..........
+1       2 0.2571778 -0.02328523 -0.01465376 -0.9384040 -0.9200908 -0.6676833
+2       2 0.2860267 -0.01316336 -0.11908252 -0.9754147 -0.9674579 -0.9449582
+...............
+
+5.Extracts only the measurements on the mean and standard deviation for each measurement
+  (#Step_2) 
+
+	#check features.txt to figure out which variable (V)s in data are for mean and std.
+	features<-read.table(pathList[2])
+  #names(features)[names(features)==c("V1","V2")]<-c("featureNum","featureName")
+	Features <- features[grep("-mean()|-std()", "featureName")]
+	Features$featureCode <- paste0("V",'VV$V1)
+	#produce the logical values for mean() and std() in features
+	#fit the logical values to 'data' to come up with the extracted data 'dataE'
+	Tr<-grepl("mean()|std()",features$V2)
+	VV<-features[Tr,]
+	VV$featureCode<-paste0("V",VV$V1)
+	dataE<- data[,c("subject",VV$featureCode,"activityNum")]
+	the dataE is like:
+ subject        V1          V2          V3         V4         V5         V6  .............
+1       2 0.2571778 -0.02328523 -0.01465376 -0.9384040 -0.9200908 -0.6676833
+2       2 0.2860267 -0.01316336 -0.11908252 -0.9754147 -0.9674579 -0.9449582
+
+6. use activity_labels.txt to appropriately labels the data set with descriptive variable names
+#Step_3 and #Step_4 
+Uses descriptive activity names to name the activities in the data set
+	#open pathList[1] for activity_labels.txt
+	Labels<-read.table(pathList[1])
+	names(Labels)[names(Labels)==c("V1","V2")]<-c("activityNum","activityName")
+	#Merge activity labels with dataE
+	dataM<-merge(dataE,Labels,by.x="activityNum",by.y="activityNum",all=TRUE) 
+	
+	The results are
+	 head(dataM,2)
+  activityNum subject        V1           V2          V3         V4         V5
+1           1       7 0.2693013  0.007891765 -0.05068156 -0.2641125 0.03238187
+2           1      21 0.2623422 -0.016215306 -0.11446522 -0.4152037 0.14611843
+.......................
+     V530      V539        V542       V543       V552 activityName
+1 -0.2867137 0.3970809  0.01268048  0.1382993 -0.1217517      WALKING
+2 -0.4939453 0.4134848 -0.56130224 -0.3928780  0.3463779      WALKING
+
+	
+7.(#Step_5) from the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject
+	#avg of each V for each activity and each subject
+	#1 calculate the average of each variable for each activity
+	D1<-group_by(dataM,activityName)
+	Da<-summarize(D1,avgAct=mean(as.matrix(D1[,c(3:81)]),na.rm=TRUE))
+
+	#2 calculate the average of each variable for each subject
+	D2<-group_by(dataM,subject)
+	Ds<-summarize(D2,avgAct=mean(as.matrix(D2[,c(3:81)]),na.rm=TRUE))
+
+	TidyData<-cbind(Da,Ds)	
+	write.table(TidyData,"./HAdata/mydata.txt",row.name=FALSE)
+  //export the data to the disk space
