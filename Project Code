@@ -1,0 +1,79 @@
+#importing packages
+	#install.packages("dplyr")
+	library(dplyr)
+
+#Human Activity Recognition Using Smartphones Data Set
+#download the data from "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+
+	Url<-"http://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip "
+	if(!file.exists("./HAdata")){dir.create("./HAdata")}
+	download.file(Url,destfile="./HAdata/datasetZip.zip",mode='wb')
+
+	#unzip the unziped files
+	pathList<-unzip("./HAdata/datasetZip.zip")  
+
+	#list the files and the corresponding paths
+	#print pathList  (optional)
+
+#Read the files
+	#test data (subject, X, AND y)
+	SubjectTest<-read.table(pathList[14])
+	X_test<-read.table(pathList[15])
+	y_test<-read.table(pathList[16])
+	
+	#training data 
+	SubjectTrain<-read.table(pathList[26])
+	X_train<-read.table(pathList[27])
+	y_train<-read.table(pathList[28])
+
+#Step_1 Merges the training and the test sets to create on data set (you can also apply 'dplyr' functions to rename)
+	names(SubjectTest)[names(SubjectTest)=="V1"]<-"subject"
+	names(y_test)[names(y_test)=="V1"]<-"activityNum"
+	TestData<-cbind(SubjectTest,X_test,y_test)
+
+	names(SubjectTrain)[names(SubjectTrain)=="V1"]<-"subject"
+	names(y_train)[names(y_train)=="V1"]<-"activityNum"
+	TrainData<-cbind(SubjectTrain,X_train,y_train)
+
+	data<-rbind(TestData,TrainData)
+
+#Step_2 Extracts only the measurements on the mean and standard deviation for each measurement
+
+	#check features.txt to figure out which variable (V)s in data are for mean and std.
+	features<-read.table(pathList[2])
+
+      #names(features)[names(features)==c("V1","V2")]<-c("featureNum","featureName")
+	Features <- features[grep("-mean()|-std()", "featureName")]
+	Features$featureCode <- paste0("V",'VV$V1)
+
+	#produce the logical values for mean() and std() in features
+	#fit the logical values to 'data' to come up with the extracted data 'dataE'
+	Tr<-grepl("mean()|std()",features$V2)
+	VV<-features[Tr,]
+	VV$featureCode<-paste0("V",VV$V1)
+	dataE<- data[,c("subject",VV$featureCode,"activityNum")]
+
+#Step_3 Uses descriptive activity names to name the activities in the data set
+	#open pathList[1] for activity_labels.txt
+	Labels<-read.table(pathList[1])
+	names(Labels)[names(Labels)==c("V1","V2")]<-c("activityNum","activityName")
+
+	
+#Step_4 appropriately labels the data set with descriptive variable names
+
+	#Merge activity labels with dataE
+	dataM<-merge(dataE,Labels,by.x="activityNum",by.y="activityNum",all=TRUE) 
+
+#Step_5 from the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject
+	#avg of each V for each activity and each subject
+	#1 calculate the average of each variable for each activity
+	D1<-group_by(dataM,activityName)
+	Da<-summarize(D1,avgAct=mean(as.matrix(D1[,c(3:81)]),na.rm=TRUE))
+
+	#2 calculate the average of each variable for each subject
+	D2<-group_by(dataM,subject)
+	Ds<-summarize(D2,avgAct=mean(as.matrix(D2[,c(3:81)]),na.rm=TRUE))
+
+	TidyData<-cbind(Da,Ds)	
+
+	write.table(TidyData,"./HAdata/mydata.txt",row.name=FALSE)
